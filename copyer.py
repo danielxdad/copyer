@@ -1,32 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-    Copyer 0.2.1
-    Licencia: MIT, GPLv2 o compatible
-    Autor: danielxdad@gmail.com
-    Requiere: py2exe y pywin32
-    
-    Historia:
-        v0.2.1 [27/06/2014]
-            - Correcion del proceso de agregacion de archivos, se deja de utilizar la funcion "TarFile.add"
-              y se cambia por "os.walk", dado que puede presentar problemas de inclusion 
-              en caso de error 
-        
-        v0.2 [24/06/2014] 
-            - Agregado la opcion 'output_dir' en la configuracion
-            - Agregado el objeto 'logger' para la salida de mesajes de registro
-            - Se agrega la impresion de informacion basica de la PC con 'printPlatformInfo'
-            - Cambiado los mensajes de salida a español
-            - Correciones menores
-        
-        v0.1 [24/01/2014]
-            - Primer release, nadie lo vio ;)
-"""
-import sys, os, re, win32api, win32file, win32process, tarfile, ConfigParser, random, logging, platform
+import sys, os, re, win32api, win32file, win32process, tarfile, ConfigParser, random, logging, platform, atexit
 from datetime import datetime
 
 CONFIG_FILE = 'copyer.ini'
 Config = None 
 logger = None
+ret_status_code = 0
 
 class Configuration:
     """
@@ -41,6 +20,8 @@ class Configuration:
         self.LST_INCLUDE_FILES_EXTENSIONS = []
         self.MAX_FILE_SIZE_TO_COPY = 0
         self.ignore_path_patterns = []
+        self.success_beep = False
+        self.error_beep = False
         
         
     def readConfig(self, configFile):
@@ -85,7 +66,13 @@ class Configuration:
                 self.compression = value
             
             elif name == 'output_dir' and value:
-                self.output_dir = value        
+                self.output_dir = value
+            
+            elif name == 'success_beep' and value.lower() not in ['0', 'false']:
+                self.success_beep = True
+            
+            elif name == 'error_beep' and value.lower() not in ['0', 'false']:
+                self.error_beep = True
             
             elif name == 'ignore_path_patterns' and value:
                 for e in value.split(','):
@@ -174,17 +161,14 @@ def getDrivesFromType(type):
     """
     Devuelve una lista con las volumenes dependiendo de el tipo especificado como parametro
     """
-    lst = win32api.GetLogicalDriveStrings().split('\x00')[:-1]
+    ret_list = []
     
-    for d in lst:
+    for d in win32api.GetLogicalDriveStrings().split('\x00')[:-1]:
         #Quitamos los volumenes A y B, reservadas para las disqueteras
-        if win32file.GetDriveType(d) == win32file.DRIVE_REMOVABLE and d.find('A:') != -1 or d.find('B:') != -1:
-            lst.remove(d)
-            
-        if win32file.GetDriveType(d) != type or not isVolumeMount(d):
-            lst.remove(d)
+        if d not in ['A:\\', 'B:\\'] and win32file.GetDriveType(d) == type and isVolumeMount(d):
+            ret_list.append(d)
     
-    return lst
+    return ret_list
 
     
 def ignoreCopyPatterns(filename):
@@ -218,6 +202,14 @@ def printPlatformInfo():
     logger.info('%s %s %s %s - %s - %s' % (info[0], info[2], info[3], info[4], info[1], info[5]))
 
 
+@atexit.register
+def atExitHandle():
+    if ret_status_code == 0 and Config.success_beep:
+        win32api.Beep(1500, 500)
+    elif ret_status_code != 0 and Config.error_beep:
+        win32api.Beep(4000, 750)
+        
+
 def main():
     global Config
     
@@ -230,7 +222,8 @@ def main():
     
     Config = Configuration()
     if not Config.readConfig(CONFIG_FILE):
-        return 1
+        ret_status_code = 1
+        return ret_status_code
     
     #Obtener lista de unidades segun la configuracion
     if Config.copy_from == 'all':
@@ -241,11 +234,13 @@ def main():
         lstDrives = getDrivesFromType(win32file.DRIVE_REMOVABLE)
     else:
         logger.error('Error, el parametro "copy_from" es invalido, revise la configuracion')
-        return 1
+        ret_status_code = 1
+        return ret_status_code
         
     if not lstDrives:
         logger.warn('No hay unidades disponibles')
-        return 1
+        ret_status_code = 1
+        return ret_status_code
         
     driveCopyDest = win32process.GetModuleFileNameEx(win32process.GetCurrentProcess(), 0)[:3]
     
@@ -290,16 +285,17 @@ def main():
                     except KeyboardInterrupt:
                         logger.error('El proceso se cerrara a peticion del usuario')
                         tarFile.close()
-                        return 1
+                        ret_status_code = 1
+                        return ret_status_code
                     except:
                         typ,value,tb = sys.exc_info()
                         logger.error('Error al intentar agregar el archivo %s: %s - %s' % (filename, repr(typ), repr(value)))
         
         tarFile.close()
     
-    win32api.Beep(1500, 500)
     logger.info('Copyer a terminado')
-    return 0
+    ret_status_code = 0
+    return ret_status_code
       
      
 if __name__ == '__main__':
