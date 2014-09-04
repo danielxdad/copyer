@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import sys, os, re, win32api, win32file, win32process, tarfile, ConfigParser, random, logging, platform, atexit
+import sys, os, re, win32api, win32file, win32process, tarfile, ConfigParser
+import random, logging, platform, atexit
 from datetime import datetime
 
 CONFIG_FILE = 'copyer.ini'
@@ -22,8 +23,19 @@ class Configuration:
         self.ignore_path_patterns = []
         self.success_beep = False
         self.error_beep = False
+        self._size_pattern = re.compile('(?P<size>[0-9]+)(?P<mag>b|k|m|g|t)', flags=re.IGNORECASE)
+    
+    
+    def _size_parser(self, size):
+        """Interpreta los tamanos de archivos en forma: numero-magnitud, ej: 2m, 1k, 3g
+        y devuelve su numero en bytes"""
+        factors = {'B': 1024**0, 'K': 1024**1, 'M': 1024**2, 'G': 1024**3, 'T': 1024**4}
+        match = self._size_pattern.match(size)
+        if match:
+            return int(match.group('size')) * factors[match.group('mag').upper()]
+        return None
         
-        
+    
     def readConfig(self, configFile):
         try:
             fd = open(configFile)
@@ -51,7 +63,7 @@ class Configuration:
         self.output_dir = '.' + os.sep
         for name, value in nameValues:
             if name == 'max_file_size':
-                self.MAX_FILE_SIZE_TO_COPY = int(value)
+                self.MAX_FILE_SIZE_TO_COPY = self._size_parser(value)
             
             elif name == 'include_files_extensions':
                 self.LST_INCLUDE_FILES_EXTENSIONS = set(value.replace(' ', '').lower().split(','))
@@ -110,7 +122,7 @@ class Configuration:
         if os.path.splitext(filename)[1].lower() in self.especificExtConfig:
             for name, value in self.especificExtConfig[os.path.splitext(filename)[1].lower()]:
                 if name.lower() == 'max_file_size':
-                    if os.path.getsize(filename) > int(value):
+                    if os.path.getsize(filename) > self._size_parser(value):
                         return False
                     
                 if name.lower() == 'rand_copy_percent' and int(value):
