@@ -197,7 +197,7 @@ def get_logger():
     Inicia un objeto Logger, para imprimir mensaje en el archivo de logs
     """
     global logger
-    logger = logging.get_logger('copyer')
+    logger = logging.getLogger('copyer')
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
