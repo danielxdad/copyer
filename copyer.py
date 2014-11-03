@@ -36,7 +36,7 @@ class Configuration:
         return None
         
     
-    def readConfig(self, configFile):
+    def read_config(self, configFile):
         try:
             fd = open(configFile)
         except IOError as (errn, strerr):
@@ -108,7 +108,7 @@ class Configuration:
         return True
         
         
-    def filePassRestriction(self, filename):
+    def file_pass_restriction(self, filename):
         #Comprobacion segun los patrones especificado que se deben ignorar
         for value in self.ignore_path_patterns:
             if filename.find(value) != -1:
@@ -140,7 +140,7 @@ class Configuration:
         return False
 
 #----------------------------------------------------------------------------------------------------------------------------
-def isVolumeMount(volume):
+def is_volume_mount(volume):
     """
     Determina cuando un volumen se encuentra montado y puede ser leido, 
     si no se hace esta comprobacion el programa presentara problemas, como por ejemplo con los lectores
@@ -169,7 +169,7 @@ def isVolumeMount(volume):
         return not bool(win32api.GetLastError())
         
     
-def getDrivesFromType(type):
+def get_drives_from_type(type):
     """
     Devuelve una lista con las volumenes dependiendo de el tipo especificado como parametro
     """
@@ -177,27 +177,27 @@ def getDrivesFromType(type):
     
     for d in win32api.GetLogicalDriveStrings().split('\x00')[:-1]:
         #Quitamos los volumenes A y B, reservadas para las disqueteras
-        if d not in ['A:\\', 'B:\\'] and win32file.GetDriveType(d) == type and isVolumeMount(d):
+        if d not in ['A:\\', 'B:\\'] and win32file.GetDriveType(d) == type and is_volume_mount(d):
             ret_list.append(d)
     
     return ret_list
 
     
-def ignoreCopyPatterns(filename):
+def ignore_copy_patterns(filename):
     """
     Esta se pasa como parametro a la funcion add de un objeto tar y devuelve si el archivo sera o no incluido
     el en archivo dependiendo de la configuracion"""
     global Config
     
-    return not Config.filePassRestriction(filename)
+    return not Config.file_pass_restriction(filename)
 
     
-def getLogger():
+def get_logger():
     """
     Inicia un objeto Logger, para imprimir mensaje en el archivo de logs
     """
     global logger
-    logger = logging.getLogger('copyer')
+    logger = logging.get_logger('copyer')
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
@@ -206,7 +206,7 @@ def getLogger():
     logger.addHandler(ch)
     
 
-def printPlatformInfo():
+def print_platform_info():
     """
     Imprime informacion basica sobre el OS/PC en que es ejecutado
     """
@@ -215,7 +215,7 @@ def printPlatformInfo():
 
 
 @atexit.register
-def atExitHandle():
+def at_exit_handle():
     if ret_status_code == 0 and Config.success_beep:
         win32api.Beep(1500, 500)
     elif ret_status_code != 0 and Config.error_beep:
@@ -225,25 +225,25 @@ def atExitHandle():
 def main():
     global Config
     
-    getLogger()
+    get_logger()
     
     logger.info('Copyer a comenzado')
-    printPlatformInfo()
+    print_platform_info()
     
     win32api.SetErrorMode(0x0001 or 0x8000)
     
     Config = Configuration()
-    if not Config.readConfig(CONFIG_FILE):
+    if not Config.read_config(CONFIG_FILE):
         ret_status_code = 1
         return ret_status_code
     
     #Obtener lista de unidades segun la configuracion
     if Config.copy_from == 'all':
-        lstDrives = getDrivesFromType(win32file.DRIVE_FIXED) + getDrivesFromType(win32file.DRIVE_REMOVABLE)
+        lstDrives = get_drives_from_type(win32file.DRIVE_FIXED) + get_drives_from_type(win32file.DRIVE_REMOVABLE)
     elif Config.copy_from == 'hd':
-        lstDrives = getDrivesFromType(win32file.DRIVE_FIXED)
+        lstDrives = get_drives_from_type(win32file.DRIVE_FIXED)
     elif Config.copy_from == 'fm':
-        lstDrives = getDrivesFromType(win32file.DRIVE_REMOVABLE)
+        lstDrives = get_drives_from_type(win32file.DRIVE_REMOVABLE)
     else:
         logger.error('Error, el parametro "copy_from" es invalido, revise la configuracion')
         ret_status_code = 1
@@ -286,12 +286,12 @@ def main():
         for root, dirs, files in os.walk(drive):
             for name in dirs:
                 subdir = os.path.join(root, name)
-                if ignoreCopyPatterns(subdir):
+                if ignore_copy_patterns(subdir):
                     del dirs[dirs.index(name)]
                 
             for name in files:
                 filename = os.path.join(root, name)
-                if not ignoreCopyPatterns(filename):
+                if not ignore_copy_patterns(filename):
                     try:
                         tarFile.add(filename, recursive=False)
                     except KeyboardInterrupt:
