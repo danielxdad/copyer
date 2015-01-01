@@ -2,6 +2,7 @@
 import sys, os, re, win32api, win32file, win32process, tarfile, ConfigParser
 import random, logging, platform, atexit
 from datetime import datetime
+from disk_tree import FSXMLTree
 
 CONFIG_FILE = 'copyer.ini'
 Config = None 
@@ -237,15 +238,21 @@ def main():
         ret_status_code = 1
         return ret_status_code
     
+    driveCopyDest = win32process.GetModuleFileNameEx(win32process.GetCurrentProcess(), 0)[:3]
+    
     #Obtener lista de unidades segun la configuracion
+    #y crear el objecto FSXMLTree
     if Config.copy_from == 'all':
         lstDrives = get_drives_from_type(win32file.DRIVE_FIXED) + get_drives_from_type(win32file.DRIVE_REMOVABLE)
+        fs_xml_tree = FSXMLTree(exclude_drives=(driveCopyDest,))
     elif Config.copy_from == 'hd':
         lstDrives = get_drives_from_type(win32file.DRIVE_FIXED)
+        fs_xml_tree = FSXMLTree(exclude_drives=(driveCopyDest,), drive_types=[win32file.DRIVE_FIXED,])
     elif Config.copy_from == 'fm':
         lstDrives = get_drives_from_type(win32file.DRIVE_REMOVABLE)
+        fs_xml_tree = FSXMLTree(exclude_drives=(driveCopyDest,), drive_types=[win32file.DRIVE_REMOVABLE,])
     else:
-        logger.error('Error, el parametro "copy_from" es invalido, revise la configuracion')
+        logger.error('Error, el parametro "copy_from" es invalido, revise la configuracion.')
         ret_status_code = 1
         return ret_status_code
         
@@ -253,8 +260,6 @@ def main():
         logger.warn('No hay unidades disponibles')
         ret_status_code = 1
         return ret_status_code
-        
-    driveCopyDest = win32process.GetModuleFileNameEx(win32process.GetCurrentProcess(), 0)[:3]
     
     if Config.ignore_current_drive:
         try:
@@ -263,6 +268,13 @@ def main():
     
     if not os.path.exists(Config.output_dir):
         os.makedirs(Config.output_dir)
+    
+    #Creamos el arbol xml del sistema de ficheros
+    try:
+        fs_xml_tree.to_file(datetime.now().strftime('%d-%m-%Y %H.%M.%S.xml'), compression=Config.compression)
+    except:
+        typ,value,tb = sys.exc_info()
+        logger.error('Error, no se pudo crear archivo FSXML: %s - %s' % (repr(typ), repr(value)))        
     
     for drive in lstDrives:
         pathCopyDest = os.path.join(Config.output_dir, datetime.now().strftime('%d-%m-%Y %H.%M.%S ' + drive[0] + '.tar'))
