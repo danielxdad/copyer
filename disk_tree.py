@@ -6,7 +6,10 @@ __all__ = ('FSXMLTree', )
 
 def stat_time_iso_time(stat_time):
     if type(stat_time) in [types.IntType, types.LongType]:
-        return datetime.datetime.fromtimestamp(stat_time).isoformat()
+        try:
+            return datetime.datetime.fromtimestamp(stat_time).isoformat()
+        except ValueError:
+            return '<!empty>'
     return '<!empty>'
 
 class FSXMLTree(object):
