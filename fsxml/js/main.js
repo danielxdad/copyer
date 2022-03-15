@@ -71,10 +71,10 @@ function humanizeSize(size){
 
 function onclick_dir(event){
     var target = event.target,
-        dirNode = FS_XML.getElementById(target.parentNode.id),
+        dirNode = FS_XML.getElementById((target.parentNode || target.elementNode).id),
         activeDir = $('.item-folder-active');
-    
-    if ( activeDir[0] !== this ){
+	
+    if ( activeDir[0] != this ){
         activeDir.removeClass('item-folder-active');
         $(target).addClass('item-folder-active');
         lsDir(dirNode);
