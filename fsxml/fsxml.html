@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>XML File System Mounter</title>
+        <meta charset="utf-8"/>
+        <link rel="stylesheet" type="text/css" href="./css/libs/kube.min.css" />
+        <link rel="stylesheet" type="text/css" href="./css/main.css" />
+        <script type="text/javascript" language="javascript" src="./js/libs/jquery-1.9.1.min.js"></script>
+        <script type="text/javascript" language="javascript" src="./js/main.js"></script>
+    </head>
+    
+    <body>
+        <section id="main">
+            <div id="fsxml_mount">
+                <input id="fsxml_file" type="file" accept="text/xml" title=""/>
+                <input id="mount" type="button" value="Mount FSXML file"/>
+                <div id="info_fsxml_file"></div>
+            </div><hr/>
+            
+            <div id="folder_list_container">
+                <header>Folders</header><hr/>
+                <ul id="root_folder_list">
+                </ul>
+            </div>
+            
+            <div id="file_list_container">
+                <header>Files</header>
+                <div id="info_file_selected"></div>
+                <hr/>
+                <ul id="root_file_list">
+                </ul>
+            </div>
+        </section>
+    </body>
+</html>
