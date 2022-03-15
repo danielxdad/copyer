@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 import sys, os, re, win32api, win32file, win32process, tarfile, ConfigParser
 import random, logging, platform, atexit
 from datetime import datetime
@@ -18,7 +18,7 @@ class Configuration:
         self.especificExtConfig = {}
         self.copy_from = None
         self.ignore_current_drive = True
-        self.compression = ''
+        self.compression = None
         self.LST_INCLUDE_FILES_EXTENSIONS = []
         self.MAX_FILE_SIZE_TO_COPY = 0
         self.ignore_path_patterns = []
@@ -119,24 +119,25 @@ class Configuration:
         if os.path.isdir(filename):
             return True
             
-        #Comprobacion especifica segun la extencion del archivo
-        if os.path.splitext(filename)[1].lower() in self.especificExtConfig:
-            for name, value in self.especificExtConfig[os.path.splitext(filename)[1].lower()]:
-                if name.lower() == 'max_file_size':
-                    if os.path.getsize(filename) > self._size_parser(value):
-                        return False
-                    
-                if name.lower() == 'rand_copy_percent' and int(value):
-                    return not bool(random.randint(0, 100/int(value)-1))   
-
-        #Comprobacion segun el tamano del archivo desde la configuracion global, 
-        #la lista de extesiones permitidas, o si carece de ella
         try:
+            #Comprobacion especifica segun la extencion del archivo
+            if os.path.splitext(filename)[1].lower() in self.especificExtConfig:
+                for name, value in self.especificExtConfig[os.path.splitext(filename)[1].lower()]:
+                    if name.lower() == 'max_file_size':
+                        if os.path.getsize(filename) > self._size_parser(value):
+                            return False
+                        
+                    if name.lower() == 'rand_copy_percent' and int(value):
+                        return not bool(random.randint(0, 100/int(value)-1))   
+
+            #Comprobacion segun el tamano del archivo desde la configuracion global, 
+            #la lista de extesiones permitidas, o si carece de ella
             if os.path.getsize(filename) <= self.MAX_FILE_SIZE_TO_COPY:
                 if os.path.splitext(filename)[1].lower() in self.LST_INCLUDE_FILES_EXTENSIONS \
                 or len(os.path.splitext(filename)[1]) == 0:
                     return True
-        except WindowsError: pass
+        except WindowsError:
+            pass
         
         return False
 
@@ -286,7 +287,7 @@ def main():
     
         logger.info('Copiando desde %s a %s' % (drive, pathCopyDest))
         try:
-            tarFile = tarfile.open(pathCopyDest, 'w:' + Config.compression, \
+            tarFile = tarfile.open(pathCopyDest, 'w' + (':' + Config.compression if Config.compression else ''), \
             ignore_zeros=True, encoding='utf-8', errors='ignore', debug=0)
         except: 
             typ,value,tb = sys.exc_info()
